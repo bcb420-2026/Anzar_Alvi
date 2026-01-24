@@ -1,4 +1,3 @@
-
 # Exercises: Inspect Specific GEO Series
 
 In this exercise, you'll retrieve metadata for the following GEO Series and answer:
@@ -7,13 +6,92 @@ In this exercise, you'll retrieve metadata for the following GEO Series and answ
 
 **Questions per GSE**
 
-  1. **What type of data is it?  Describe it.** (platform technology; e.g., high-throughput sequencing, array)
-  1. **What disease or model is it using?** (infer from series title/summary/platform organism)
-  1. **How many samples are there? What type of data is associated with the record?** 
-  1. **How many control and how many disease?** 
-  1.  **Can you find out any information about the GEO dataset - GSE264108. Why or Why not?
-  
+1.  **What type of data is it? Describe it.** (platform technology; e.g., high-throughput sequencing, array)
+2.  **What disease or model is it using?** (infer from series title/summary/platform organism)
+3.  **How many samples are there? What type of data is associated with the record?**
+4.  **How many control and how many disease?**
+5.  \*\*Can you find out any information about the GEO dataset - GSE264108. Why or Why not?
 
 > Hint: Sample labels are not standardized. Use robust keyword detection (e.g., `control|normal|healthy|wild[- ]?type` vs. `tumou?r|cancer|patient|disease|mutant|treated`). Inspect a few GSM rows if the automatic inference is uncertain.
 
+# Answers
 
+### First, understand the data
+
+```{r}
+dbListTables(con)
+```
+
+```{r}
+dbListFields(con, 'gse')
+```
+
+### Q1 + Q2
+
+```{r}
+sql <- paste(
+  "SELECT DISTINCT",
+  "gse.gse,",
+  "gse.title AS gse_title,",
+  "gse.summary,",
+  "gse.overall_design,",
+  "gse.type AS gse_type,",
+  "gse.submission_date,",
+  "gpl.gpl,",
+  "gpl.title AS gpl_title,",
+  "gpl.technology,",
+  "gpl.organism",
+  "FROM gse",
+  "LEFT JOIN gse_gpl ON gse_gpl.gse = gse.gse",
+  "LEFT JOIN gpl ON gpl.gpl = gse_gpl.gpl",
+  "WHERE gse.gse = 'GSE264108'"
+)
+
+rs <- dbGetQuery(con, sql)
+rs
+```
+
+### Q3
+
+```{r}
+sql <- paste(
+  "SELECT",
+  "gsm.gsm,",
+  "gsm.title,",
+  "gsm.source_name_ch1,",
+  "gsm.characteristics_ch1,",
+  "gsm.description,",
+  "gsm.organism_ch1",
+  "FROM gse_gsm",
+  "JOIN gsm ON gsm.gsm = gse_gsm.gsm",
+  "WHERE gse_gsm.gse = 'GSE264108'"
+)
+
+gsm_rs <- dbGetQuery(con, sql)
+gsm_rs
+
+paste("There are", nrow(gsm_rs), "samples.")
+```
+
+### Q4
+
+```{r}
+library(dplyr)
+library(stringr)
+
+gsm_labeled <- gsm_rs %>%
+  mutate(
+    blob = str_to_lower(
+      paste(title, source_name_ch1, characteristics_ch1, description, sep=" ")
+    ),
+    group = case_when(
+      str_detect(blob, "control|normal|healthy|wild[- ]?type") ~ "control",
+      str_detect(blob, "tumou?r|cancer|disease|patient|case|mutant|treated") ~ "disease",
+      TRUE ~ "unknown"
+    )
+  )
+
+gsm_labeled %>% count(group)
+
+# Over here, we may not be able to get clear groups... if that's the case, it's best to just inspect the rows from gsm_rs manually
+```
