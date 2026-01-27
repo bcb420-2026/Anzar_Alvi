@@ -1,4 +1,3 @@
-
 ---
 title: "Finding Expression Data with GEOmetadb"
 author: "Ruth Isserlin"
@@ -10,34 +9,30 @@ description: |
   ask reproducible questions in SQL from R, and shortlist RNA-seq series.
 ---
 
-# Welcome {-}
+# Welcome {.unnumbered}
 
-This book is a tutorial-style rewrite of a lecture on *where to find expression data* and
-*how to mine GEO metadata with the `GEOmetadb` package*. It is designed for
-fourth-year bioinformatics students and focuses on reproducible code that you
-can run as-is.
+This book is a tutorial-style rewrite of a lecture on *where to find expression data* and *how to mine GEO metadata with the `GEOmetadb` package*. It is designed for fourth-year bioinformatics students and focuses on reproducible code that you can run as-is.
 
 If you're new to **bookdown**, install it with:
 
-```r
+``` r
 install.packages("bookdown")
 ```
 
 Then build this book by running in R:
 
-```r
+``` r
 bookdown::render_book(".")
 ```
 
 <!--chapter:end:index.Rmd-->
 
-
 # Overview
 
-- Where can I find expression data?
-- Tools for mining the data — **GEOmetadb**
-- What GEO data types exist (GSE/GSM/GPL/GDS)?
-- How to shortlist a dataset of interest
+-   Where can I find expression data?
+-   Tools for mining the data — **GEOmetadb**
+-   What GEO data types exist (GSE/GSM/GPL/GDS)?
+-   How to shortlist a dataset of interest
 
 The main public repository we’ll use is the **Gene Expression Omnibus (GEO)**. Visit: <https://www.ncbi.nlm.nih.gov/geo/>.
 
@@ -48,15 +43,14 @@ The main public repository we’ll use is the **Gene Expression Omnibus (GEO)**.
 
 <!--chapter:end:01-overview.Rmd-->
 
-
 # GEO Datatypes
 
 GEO organizes data into several related entities:
 
-- **GSE — Series**: links related samples and describes the study; may include archives of raw/processed files.
-- **GSM — Sample**: per‑sample description and data; each GSM belongs to exactly one platform (GPL).
-- **GPL — Platform**: array/sequencer description; many GSMs can map to a single GPL.
-- **GDS — Dataset**: curated collections of comparable samples on the same platform with uniform processing.
+-   **GSE — Series**: links related samples and describes the study; may include archives of raw/processed files.
+-   **GSM — Sample**: per‑sample description and data; each GSM belongs to exactly one platform (GPL).
+-   **GPL — Platform**: array/sequencer description; many GSMs can map to a single GPL.
+-   **GDS — Dataset**: curated collections of comparable samples on the same platform with uniform processing.
 
 See the GEO overview: <https://www.ncbi.nlm.nih.gov/geo/info/overview.html>
 
@@ -66,11 +60,9 @@ See the GEO overview: <https://www.ncbi.nlm.nih.gov/geo/info/overview.html>
 
 <!--chapter:end:02-geo-datatypes.Rmd-->
 
-
 # Setting up `GEOmetadb`
 
-`GEOmetadb` provides a SQLite mirror of GEO metadata that you can query from R.
-It mirrors GEO as-is (no curation). Download the current SQLite file once and reuse it.
+`GEOmetadb` provides a SQLite mirror of GEO metadata that you can query from R. It mirrors GEO as-is (no curation). Download the current SQLite file once and reuse it.
 
 ## Install packages
 
@@ -114,7 +106,6 @@ dbListFields(con, 'gse')
 
 <!--chapter:end:03-setup-geometadb.Rmd-->
 
-
 # Exploring Platforms (GPL)
 
 How many platforms exist, and what technologies do they use?
@@ -155,10 +146,9 @@ ggplot(uniq_tech_all, aes(technology, Num_Platforms, fill = type)) +
 
 <!--chapter:end:04-exploring-platforms.Rmd-->
 
-
 # Finding Datasets of Interest
 
-Goal: RNA-seq, human, recent (last ~3 years), and with sufficient samples.
+Goal: RNA-seq, human, recent (last \~3 years), and with sufficient samples.
 
 ## RNA-seq series by platform technology
 
@@ -243,7 +233,6 @@ subset(gse.count, Freq > 6)
 
 <!--chapter:end:05-finding-datasets.Rmd-->
 
-
 # Exercises: Inspect Specific GEO Series
 
 In this exercise, you'll retrieve metadata for the following GEO Series and answer:
@@ -252,28 +241,23 @@ In this exercise, you'll retrieve metadata for the following GEO Series and answ
 
 **Questions per GSE**
 
-  1. **What type of data is it?  Describe it.** (platform technology; e.g., high-throughput sequencing, array)
-  1. **What disease or model is it using?** (infer from series title/summary/platform organism)
-  1. **How many samples are there? What type of data is associated with the record?** 
-  1. **How many control and how many disease?** 
-  1.  **Can you find out any information about the GEO dataset - GSE264108. Why or Why not?
-  
+1.  **What type of data is it? Describe it.** (platform technology; e.g., high-throughput sequencing, array)
+2.  **What disease or model is it using?** (infer from series title/summary/platform organism)
+3.  **How many samples are there? What type of data is associated with the record?**
+4.  **How many control and how many disease?**
+5.  \*\*Can you find out any information about the GEO dataset - GSE264108. Why or Why not?
 
 > Hint: Sample labels are not standardized. Use robust keyword detection (e.g., `control|normal|healthy|wild[- ]?type` vs. `tumou?r|cancer|patient|disease|mutant|treated`). Inspect a few GSM rows if the automatic inference is uncertain.
 
-
-
 <!--chapter:end:06-exercises.Rmd-->
-
 
 # Next week / Next steps
 
-- Download one candidate series and its supplementary counts
-- Document everything (session info, package versions)
+-   Download one candidate series and its supplementary counts
+-   Document everything (session info, package versions)
 
 ```{r}
 sessionInfo()
 ```
 
 <!--chapter:end:08-next-steps.Rmd-->
-

@@ -1,4 +1,3 @@
-
 # Exploring Platforms (GPL)
 
 How many platforms exist, and what technologies do they use?
