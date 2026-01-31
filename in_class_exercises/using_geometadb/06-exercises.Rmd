@@ -14,7 +14,7 @@ In this exercise, you'll retrieve metadata for the following GEO Series and answ
 
 > Hint: Sample labels are not standardized. Use robust keyword detection (e.g., `control|normal|healthy|wild[- ]?type` vs. `tumou?r|cancer|patient|disease|mutant|treated`). Inspect a few GSM rows if the automatic inference is uncertain.
 
-# Answers
+# Answers (full solutions are in my wiki)
 
 ### First, understand the data
 
