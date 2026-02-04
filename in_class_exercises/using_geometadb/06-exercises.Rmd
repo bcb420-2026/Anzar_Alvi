@@ -44,7 +44,7 @@ sql <- paste(
   "FROM gse",
   "LEFT JOIN gse_gpl ON gse_gpl.gse = gse.gse",
   "LEFT JOIN gpl ON gpl.gpl = gse_gpl.gpl",
-  "WHERE gse.gse = 'GSE264108'"
+  "WHERE gse.gse = 'GSE123658'"
 )
 
 rs <- dbGetQuery(con, sql)
@@ -64,7 +64,7 @@ sql <- paste(
   "gsm.organism_ch1",
   "FROM gse_gsm",
   "JOIN gsm ON gsm.gsm = gse_gsm.gsm",
-  "WHERE gse_gsm.gse = 'GSE264108'"
+  "WHERE gse_gsm.gse = 'GSE123658'"
 )
 
 gsm_rs <- dbGetQuery(con, sql)

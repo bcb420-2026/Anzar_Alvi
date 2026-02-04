@@ -1,6 +1,9 @@
-﻿Course_Department,Course_Code,Year,course_type
-ANTH,227,1,Elective
-BIOL,121,1,BSc Requirement 
-CHEM,121,1,BSc Requirement 
-ENGL,110,1,BSc Requirement 
-
+Course_Department,Course_Code,Year,course_type
+BCB,330,4,HBSc Requirement
+BCB,410,4,HBSc Requirement
+CSC,209,3,HBSc Requirement
+RLG,376,3,Elective
+BCH,311,2,HBSc Requirement
+RLG,234,2,Elective
+MAT,135,1,HBSc Requirement
+POL,107,1,Elective
