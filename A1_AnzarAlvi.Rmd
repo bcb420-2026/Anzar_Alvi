@@ -51,7 +51,9 @@ link-citations: true
 
 5.  Conclusion
 
-6.  References
+6.  Link to journal entry
+
+7.  References
 
 ## 1. Introduction
 
@@ -719,7 +721,7 @@ draw(basic_heatmap, heatmap_legend_side = "right", annotation_legend_side = "rig
 
 **Figure 7. Heatmap of top 100 differentially expressed genes between activeTB and LTBI.** Heamtap showing variance-stabilized expression values (VST) for the top 100 genes (ordered with respect to adjusted p-value). The VST values were standardized by gene (row z-score) to emphasize expression differences across samples. Each column is a unique sample, and each row is a unique gene. Samples are labeled as either activeTB or LTBI in the "Group" row. Hierarchical clustering on both the x- and y-axis is enabled, revealing distinct transcriptional and similar differential expression patterns for the top 100 genes for both groups.
 
-*Figure 7* demonstrates that samples clearly cluster according to their group (LTBI or activeTB). This further suggests that LTBI and activeTB samples have different transcriptional profiles.
+*Figure 7* demonstrates that samples clearly cluster according to their group (LTBI or activeTB). Although 2 LTBI patients clustered with the activeTB group and 1 activeTB patient clustered with the LTBI group, majority of the patients were in the right group. So, it can be concluded that LTBI and activeTB samples have distinct transcriptional profiles.
 
 ## 4. Dataset interpretation and documentation
 
@@ -801,4 +803,8 @@ I also computed the average library size, 26,836,006, across all 48 samples by r
 
 In this study, I successfully loaded and processed the GSE152218 RNA-seq dataset for differential gene expression analysis between ATB and LTBI samples. Ensembl gene IDs were translated to unique HUGO gene symbols, low-count genes were removed, and counts were normalized using `DESeq2`'s median-of-ratios method along with variance stabilizing transformation (VST). Exploratory analysis suggested that samples were able to be compared against each other. Finally, differential gene expression analysis suggested different transcriptional profiles between LTBI and ATB samples (as hypothesized).
 
-## 6. References
+## 6. Link to journal entry
+
+The link is here: https://github.com/bcb420-2026/Anzar_Alvi/wiki/A1
+
+## 7. References
