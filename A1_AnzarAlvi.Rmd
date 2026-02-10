@@ -1,0 +1,804 @@
+---
+title: "BCB420 Assignment #1 - Data set selection, clean and scoring"
+author: "Anzar Alvi"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    code_folding: hide
+    df_print: paged
+  html_notebook:
+    citeproc: true
+bibliography: references.bib
+link-citations: true
+---
+
+## Table of contents
+
+1.  Introduction
+
+    1.1 Background
+
+    1.2 Dataset source and details
+
+    1.3 Research question and hypothesis
+
+2.  Data loading, pre-processing, and normalization
+
+    2.1 Data acquisition
+
+    2.2 Mapping to HUGO symbols
+
+    2.3 Data cleaning
+
+    2.4 Exploratory data analysis and normalization
+
+3.  Differential gene expression analysis
+
+    3.1 Model design
+
+    3.2 Statistical testing
+
+    3.3 Thresholds
+
+    3.4 Volcano plot
+
+    3.5 Heatmap of top genes
+
+4.  Dataset interpretation and documentation
+
+5.  Conclusion
+
+6.  References
+
+## 1. Introduction
+
+### 1.1 Background
+
+Tuberculosis (TB) is a contagious bacterial disease caused by *Mycobacterium tuberculosis* which mainly impacts the lungs but can have an effect on other parts of the body too. TB is known as one of the main causes of mortality worldwide (≈1.25 million deaths and 10.8 million cases in 2023). TB infection exists along a spectrum. The most common form is Active Tuberculosis (ATB), where individuals exhibit clinical symptoms and are able to transfer the disease to other people. There is another form of TB called Latent Tuberculosis Infection (LTBI) in which the pathogen is present in the individual, but in a dormant state. The outcome of this is that those with LTBI will not exhibit symptoms and are not contagious [@luo2025]. Characterizing the differences between ATB and LTBI is critical for effective diagnosis, treatment, and disease control.
+
+Gene expression profiling for patients with TB will allow for an understanding of the host immune response during the infection (which will further reveal molecular signatures linked to TB progression). Furthermore, identifying transcriptional differences between ATB and LTBI will help for the understanding of underlying biological processes (e.g., related to immunological or inflammatory processes) driving the shift from a latent to active disease. So, studying expression patterns is biologically meaningful for 2 key reasons: 1) it improves understanding of TB pathogenesis, and 2) it can reveal key biomarkers that distinguishes active diseases from latent infections.
+
+### 1.2 Dataset source and details
+
+The dataset selected for this study (GSE152218) came from the Gene Expression Omnibus (GEO) in the National Center for Biotechnology Information (NCBI). This study investigates transcriptional differences between ATB and LTBI in human samples using expression profiling by high throughput bulk RNA sequencing of whole blood cells (Illumina HiSeq 2500 (*Homo sapiens*)). The dataset was submitted on June 10th, 2020, officially published/made public on January 1st, 2021, and last updated on October 28th, 2022 by William Evan Johnson at the Division of Computational Biomedicine and Boston University. There are 2 key publications associated with this dataset: 1) Comparing tuberculosis gene signatures in malnourished individuals using the TBSignatureProfiler [@johnson2021], and 2) Malnutrition leads to increased inflammation and expression of tuberculosis risk signatures in recently exposed household contacts of pulmonary tuberculosis [@vanvalkenburg2022]. The common aim for the studies were to identify host transcriptional signatures associated with TB progression.
+
+Some key metadata information of this dataset (n=48) tell us that there are 23 females & 25 males, age range from 12-68, and there are 4 malnourished LTBI and 2 malnourished ATB patients.
+
+### 1.3 Research question and hypothesis
+
+The research question I am asking is: Which genes are differentially expressed between ATB and LTBI?
+
+I hypothesize that ATB samples will show upregulation of genes compared to LTBI samples.
+
+## 2. Data loading, pre-processing, and normalization
+
+### 2.1 Data acquisition
+
+Before acquiring any data, all required packages were installed and loaded in. The following packages were required: `BiocManager` [@BiocManager], `GEOquery` [@GEOquery], `biomaRt` [@biomaRt], `ggplot2` [@ggplot2], `reshape2` [@reshape2], `DESeq2` [@DESeq2], `dplyr` [@dplyr], `limma` [@limma], `ggrepel` [@ggrepel], `ComplexHeatmap` [@gu2016], and `grid` [@grid].
+
+```{r import-packages, message=FALSE, warning=FALSE}
+# Install and load BiocManager
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages(BiocManager, dependencies = TRUE)
+  library("BiocManager")
+} else {
+  library("BiocManager")
+}
+
+# Install and load GEOquery
+if (!requireNamespace("GEOquery", quietly = TRUE)) {
+  BiocManager::install("GEOquery")
+  library("GEOquery")
+} else {
+  library("GEOquery")
+}
+
+# Install and load biomaRt
+if (!requireNamespace("biomaRt", quietly = TRUE)) {
+  BiocManager::install("biomaRt")
+  library("biomaRt")
+} else {
+  library("biomaRt")
+}
+
+# Install and load ggplot2
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  BiocManager::install("ggplot2")
+  library("ggplot2")
+} else {
+  library("ggplot2")
+}
+
+# Install and load reshape2
+if (!requireNamespace("reshape2", quietly = TRUE)) {
+  BiocManager::install("reshape2")
+  library("reshape2")
+} else {
+  library("reshape2")
+}
+
+# Install and load DESeq2
+if (!requireNamespace("DESeq2", quietly = TRUE)) {
+  BiocManager::install("DESeq2")
+  library("DESeq2")
+} else {
+  library("DESeq2")
+}
+
+# Install and load dplyr
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  BiocManager::install("dplyr")
+  library("dplyr")
+} else {
+  library("dplyr")
+}
+
+# Install and load limma
+if (!requireNamespace("limma", quietly = TRUE)) {
+  BiocManager::install("limma")
+  library("limma")
+} else {
+  library("limma")
+}
+
+# Install and load ggrepel
+if (!requireNamespace("ggrepel", quietly = TRUE)) {
+  BiocManager::install("ggrepel")
+  library("ggrepel")
+} else {
+  library("ggrepel")
+}
+
+# Install and load ComplexHeatmap
+if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
+  BiocManager::install("ComplexHeatmap")
+  library("ComplexHeatmap")
+} else {
+  library("ComplexHeatmap")
+}
+
+# Install and load grid
+if (!requireNamespace("grid", quietly = TRUE)) {
+  BiocManager::install("grid")
+  library("grid")
+} else {
+  library("grid")
+}
+```
+
+Gene expression data (raw counts for bulk RNA-sequencing) for GSE152218 were obtained from GEO using the `GEOquery` R package. The series matrix file was downloaded to access both processed expression data and sample metadata. Then, phenotype information (key metadata information) for all samples was extracted. Furthermore, the supplementary files were retrieved to obtain the raw count matrix.
+
+```{r acquire-data, message=FALSE, warning=FALSE}
+# Retrieve the series matrix
+gse_list <- getGEO("GSE152218", GSEMatrix = TRUE)
+gse <- gse_list[[1]]
+
+# Retrieve metadata for all samples
+pheno <- pData(gse)
+
+# Retreive the expression matrix
+expr <- exprs(gse)
+
+# Retrieve supplementary data (this is where the raw counts are) 
+supp <- getGEOSuppFiles("GSE152218", 
+                        makeDirectory = FALSE, 
+                        baseDir = tempdir()
+)
+
+supp_files <- rownames(supp) # This is the path for the supplementary data (it's a gz file)
+
+# Read in raw counts
+dat <- read.delim( 
+  gzfile(supp_files[1]),
+  stringsAsFactors = FALSE
+)
+
+colnames(dat)[colnames(dat) == "X"] <- "ensembl_gene_id" # Rename
+
+# There should be 49 columns (1 named "ensembl_gene_id" and 48 patient id's)
+```
+
+### 2.2 Mapping to HUGO symbols
+
+The gene expression dataset originally contained Ensembl gene identifiers. I converted these to HUGO gene symbols approved by the HGNC (as per assignment instructions). First, version suffixes (e.g., ENSG0000001234.5) were removed from Ensembl IDs to ensure mapping was accurate.
+
+Gene ID conversion (from Ensembl to HUGO) was done using the `biomaRt` package in R, querying the Ensembl BioMart database (human dataset: *hsapiens_gene_ensembl*, version 115). Then, the cleaned Ensembl gene IDs (without suffixes) were submitted to BioMart using the `getBM()` function in order to retrieve HUGO symbols.
+
+```{r hugo-mapping, message=FALSE, warning=FALSE}
+# List avaialble BioMart databases
+# listMarts()
+
+# Use ensembl
+ensembl <- useEnsembl(
+  biomart = "genes",
+  dataset = "hsapiens_gene_ensembl", 
+  version = 115
+)
+
+# List the datasets and select human
+datasets <- listDatasets(ensembl)
+human <- datasets[grep(datasets$dataset, pattern = "hsapiens"), ]
+
+# Identify correct filter
+all_filters <- listFilters(ensembl)
+# all_filters[grep(all_filters$name, pattern = "ensembl_gene"), ]
+
+# Identify the correct attributes
+all_attr <- listAttributes(ensembl)
+# all_attr[1:10, ]
+
+# Search for hgnc
+# searchAttributes(ensembl, "hgnc")
+
+# Strip the version suffixes
+strip_ensembl_version <- function(x) sub("\\..*$", "", x)
+ids <- dat$ensembl_gene_id
+ids_clean <- strip_ensembl_version(ids)
+
+# Run query with getBM() to get hgnc id's
+map <- getBM(
+  attributes = c("ensembl_gene_id", "hgnc_symbol"),
+  filters = "ensembl_gene_id",
+  values = ids_clean,
+  mart = ensembl
+)
+```
+
+### 2.3 Data cleaning
+
+After mapping Ensembl IDs to HUGO symbols, I cleaned my data to ensure each row represents a single gene (while keeping the dataset as complete as possible). As I was doing identifier mapping, I identified 3 possible issues which could have occurred and how to deal with each of them:
+
+1.  One Ensembl ID maps to multiple HUGO symbols
+
+    This can occur because of either non-unique fragments, weak annotations or overlapping transcripts. Fortunately, I did not face this issue.
+
+2.  Multiple Ensembl IDs map to one HUGO symbol
+
+    This can occur due to alternate annotations, or something related. To ensure that our final matrix has one gene per row, I kept the first occurrence of the HUGO symbol and removed the duplicates. This prevented the same gene being counted multiple times (leading to inaccurate differential expression results).
+
+3.  No HUGO symbol was available (empty mapping)
+
+    Instead of removing such genes, I retained them, but used their Ensembl gene ID as their identifier. The reason is because it would be wrong to make the assumption that genes without an HUGO mapping are irrelevant in differential expression analysis. So, in order to avoid discarding potentially relevant features (even if they lack an HUGO symbol due to updated loci, un-characterized loci, or something related), I preserved a unique identifier for the gene for differential expression analysis.
+
+Finally, low-count genes were also filtered out (I ensured that each gene has a total read count \>10 across all samples) [@paton2024]. This is because genes with very low counts tend to produce inaccurate dispersion estimates, contribute to noise, and increase the multiple-testing burden in differential expression analysis.
+
+```{r data-cleaning, message=FALSE, warning=FALSE}
+# Deduplicate mapping: keep first valid HGNC per Ensembl ID (Case 1)
+# We didn't face any issue here, but the code is still present and run
+map_deduplicated <- map %>%
+  group_by(ensembl_gene_id) %>%
+  summarize(
+    hgnc_symbol = {
+      x <- hgnc_symbol[hgnc_symbol != ""]
+      if (length(x) == 0) NA_character_ else x[1]
+    },
+    .groups = "drop"
+  )
+
+# Merge mapping back into dat
+dat$ensembl_gene_id <- ids_clean
+dat$hgnc_symbol <- map_deduplicated$hgnc_symbol[match(dat$ensembl_gene_id, map_deduplicated$ensembl_gene_id)]
+
+# Create final gene identifier:
+# - use HGNC when available
+# - otherwise keep Ensembl ID (Case 3)
+dat$final_id <- ifelse(is.na(dat$hgnc_symbol) | dat$hgnc_symbol == "",
+                       dat$ensembl_gene_id,
+                       dat$hgnc_symbol)
+
+# Enforce one gene per row (Case 2):
+# If multiple rows map to the same HGNC symbol, keep the first occurrence
+dat <- dat[!duplicated(dat$final_id), ]
+
+# Set rownames to final_id (mix of HGNC + Ensembl for unmapped)
+rownames(dat) <- dat$final_id
+
+# Remove identifier columns from count matrix
+clean_dat <- dat[, !(colnames(dat) %in% c("ensembl_gene_id", "hgnc_symbol", "final_id"))]
+
+# Counts matrix
+count_mat <- as.matrix(clean_dat)
+storage.mode(count_mat) <- "integer"
+
+# Low count filtering (total count > 10 across all samples)
+keep <- rowSums(count_mat) > 10
+count_mat <- count_mat[keep, ]
+
+# Show table 1
+head(data.frame(count_mat), 10)
+
+# Collecting metadata
+samp <- colnames(count_mat)
+
+group <- ifelse(grepl("A0$|A$", samp), "activeTB",
+          ifelse(grepl("B0$|B$", samp), "LTBI", NA))
+group <- factor(group, levels = c("LTBI", "activeTB"))
+
+meta <- data.frame(row.names = samp, group = group)
+```
+
+**Table 1. Preview of the cleaned RNA-seq count matrix.** The table shows the first 10 rows of the processed gene expression count matrix (pre-normalization) after mapping HUGO symbols and cleaning data. Each row is a unique gene and each column is a unique sample. Some Ensembl gene IDs are present (for identifiers whch had an empty HUGO mapping). Entries are raw read counts.
+
+### 2.4 Exploratory data analysis and normalization
+
+In order to assess overall data quality and prepare the counts matrix for differential expression analysis, several exploratory analyses were performed, along with normalization. These include: evaluating library sizes, expression distributions pre- and post-normalization, sample clustering using a multidimensional scaling (MDS) plot, and gene-wise dispersion estimates. By performing all these steps, I was able to identify technical variation and confirm that the dataset I am working with is suitable for the chosen statistical model.
+
+#### 2.4.1 Library size distribution
+
+Library size (i.e., the total number of counts per sample) was examined in order to examine the consistency across samples.
+
+```{r library-size-barplot, message=FALSE, warning=FALSE}
+# Library sizes
+lib_size <- colSums(count_mat)
+
+# Build plotting df in same order as matrix
+lib_df <- data.frame(
+  sample = colnames(count_mat),
+  library_size = as.numeric(lib_size),
+  group = meta$group
+)
+
+# Order by library size (small -> large)
+lib_df <- lib_df[order(lib_df$library_size), ]
+lib_df$sample <- factor(lib_df$sample, levels = lib_df$sample)
+
+ggplot(lib_df, aes(x = sample, y = library_size, fill = group)) +
+  geom_col(width = 0.85) +
+  coord_flip() +
+  labs(
+    title = expression(bold("Library size per sample")),
+    x = expression(bold("Sample")),
+    y = expression(bold("Total read counts")),
+    fill = "Group"
+  ) +
+  scale_fill_manual(values = c("LTBI" = "#2C7BB6", "activeTB" = "#D7191C")) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text.y = element_text(size = 9),
+    legend.title = element_text(face = "bold"),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6)
+  )
+```
+
+**Figure 1. Library size per sample.** Bar plot showing total number of counts (library size) for each sample after pre-processing and gene filtering, but before normalization. Samples are labeled by condition as either activeTB or LTBI, and ordered by increasing library size. The x-axis represents total read counts, and the y-axis represents individual samples (n=48).
+
+*Figure 1* clearly shows variation in total read counts across samples. This is strong justification for normalizing the count data to ensure expression values that are comparable across samples.
+
+#### 2.4.2 Expression distribution before normalization
+
+A boxplot of log-transformed raw counts was generated in order to show how expression data is distributed across samples, before normalization.
+
+```{r pre-normalization-boxplot, message=FALSE, warning=FALSE}
+# Use the same ordering as the barplot (increasing library size)
+lib_order <- names(sort(colSums(count_mat)))     # original colnames, ordered
+
+pre_df <- as.data.frame(log2(count_mat + 1))
+pre_df$gene <- rownames(pre_df)
+
+pre_long <- melt(pre_df, id.vars = "gene",
+                 variable.name = "sample",
+                 value.name = "expression")
+
+# Clean sample IDs + enforce barplot order
+pre_long$sample <- factor(pre_long$sample, levels = lib_order)
+
+ggplot(pre_long, aes(x = sample, y = expression)) +
+  geom_boxplot(width = 0.7, outlier.size = 0.25,
+               fill = "lightgrey", colour = "black") +
+  labs(
+    title = expression(bold("Pre-normalization expression")),
+    x = expression(bold("Sample")),
+    y = expression(bold("log2(raw counts + 1)"))
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6)
+  )
+```
+
+**Figure 2. Pre-normalization expression distribution across samples.** Boxplots showing how gene expression is distributed across samples before normalization, plotted as log2(raw counts + 1).
+
+#### 2.4.3 Normalization and variance stabilization
+
+Normalization of the data was first done using the `DESeq2` R package using the "median-of-ratios" method. This is a robust RNA-seq normalization method in which a scaling factor (size factor) for every sample is computed by dividing counts by a pseudo-reference (geometric mean), then taking the median of these ratios. After this step that corrected for differences in sequencing depth and RNA composition between samples, Variance Stabilizing Transformation (VST) was applied to reduce the dependence that variance has on mean expression. The result is data that is approximately homoscedastic (very well suited for visualization and clustering).
+
+```{r normalization-deseq2-vst, message=FALSE, warning=FALSE}
+# Build dds
+dds <- DESeqDataSetFromMatrix(countData = count_mat, colData = meta, design = ~ group)
+
+# Normalization
+dds <- DESeq(dds)
+
+# VST transform
+vsd <- vst(dds, blind = TRUE)
+vsd_mat <- assay(vsd)
+```
+
+#### 2.4.2 Expression distribution after normalization
+
+After normalizing with the median-of-ratios method in `DESeq2` and VST, a boxplot of the counts was generated in order to show how expression data is distributed across samples, post-normalization.
+
+```{r post-normalization-boxplot, message=FALSE, warning=FALSE}
+# Same ordering as barplot (increasing library size)
+lib_order <- names(sort(colSums(count_mat)))
+post_df <- as.data.frame(vsd_mat)
+post_df$gene <- rownames(post_df)
+
+post_long <- melt(post_df, id.vars = "gene",
+                  variable.name = "sample",
+                  value.name = "expression")
+
+# Clean sample IDs + enforce same order
+post_long$sample <- factor(post_long$sample, levels = lib_order)
+
+# Plot the boxplot
+ggplot(post_long, aes(x = sample, y = expression)) +
+  geom_boxplot(width = 0.7, outlier.size = 0.25,
+               fill = "lightgrey", colour = "black") +
+  labs(
+    title = expression(bold("Post-normalization expression (median-of-ratios + VST)")),
+    x = expression(bold("Sample")),
+    y = expression(bold("VST expression"))
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6)
+  )
+```
+
+**Figure 3. Post-normalization expression distributions across samples.** Boxplots showing each sample's distribution of variance-stabilized expression values (VST) after normalization and transformation.
+
+#### 2.4.3 Multidimensional scaling (MDS)
+
+MDS was performed in order to see the similarity between samples (based on gene expression). The plot in *Figure 4* shows that samples with similar transcriptional profiles will cluster together (in a low dimensional space).
+
+```{r mds-plot, message=FALSE, warning=FALSE}
+# Plot the MDS plot
+plotMDS(vsd_mat,
+        col = as.numeric(meta$group),
+        pch = 16,
+        main = expression(bold("MDS of VST expression by group"))) # Bolded title
+
+# Legend customization for MDS plot
+legend("topright",
+       legend = levels(meta$group),
+       col = 1:length(levels(meta$group)),
+       pch = 16,
+       bty = "o")
+```
+
+**Figure 4. Multidimensional scaling (MDS) plot of samples based on VST expression.** MDS plot generated from variance-stabilized (VST) expression values. All the samples are projected onto the first 2 dimensions (which is dervied from leading log fold-change, logFC, variation). Each point is an individual sample and is coloured by group (black dot is LTBI and pink dot is activeTB).
+
+**Testing for potential outlier**
+
+The MDS plot shows one sample quite far away from the other samples at around (2.1, 0.5) in *Figure 4*.
+
+The MDS plot showed one activeTB sample (far away from the main cluster). I immediately suspected a potential outlier. In order to make an informed decision about keeping or removing this sample, I identified it first by looking for the sample with the largest distance from the centroid in the MDS space [@filzmoser2008] and computed its sequencing depth. This sample had a library size of 39.9M reads which is within the normal range of the data (max = 44.4M; z-score = 2.20 \< 3). Hence, since no issue was detected, the sample was kept. The sample was likely to have been far from the main cluster due to true biological variation.
+
+One of the originating papers (Malnutrition leads to increased inflammation and expression of tuberculosis risk signatures in recently exposed household contacts of pulmonary tuberculosis [@vanvalkenburg2022]) did detect an outlier LTBI sample in their principal component analysis (PCA) which was not able to be corrected for. There is a chance that this is the same sample as the LTBI sample I detected as being far from the main cluster in the MDS plot.
+
+```{r outlier-testing, message=FALSE, warning=FALSE}
+# Get MDS coordinates without plotting
+mds <- plotMDS(vsd_mat, plot = FALSE)
+
+# Euclidean distance from the centroid in MDS space
+coords <- data.frame(sample = colnames(vsd_mat),
+                     dim1 = mds$x, dim2 = mds$y)
+
+coords$dist <- sqrt((coords$dim1 - mean(coords$dim1))^2 +
+                    (coords$dim2 - mean(coords$dim2))^2)
+
+# Print the most extreme sample (far-right point)
+# coords[order(-coords$dist), ][1, ]
+
+# Compare library size of that sample vs others
+outlier_sample <- coords$sample[which.max(coords$dist)]
+lib_size <- colSums(count_mat)
+
+# summary(lib_size)
+# lib_size[outlier_sample]
+
+# Check how extreme it is (z-score)
+z <- (lib_size - mean(lib_size)) / sd(lib_size)
+# z[outlier_sample]
+```
+
+#### 2.4.4 Dispersion and biological coefficient of variation (BCV)
+
+Gene-wise dispersion estimates from DESeq2 as a function of mean normalized expression was computed using the `plotDispEsts()` function from the `DESeq2` R package.
+
+```{r dispersion-plot, message=FALSE, warning=FALSE}
+# Save current par settings so you don't permanently change plots
+op <- par(no.readonly = TRUE)
+
+par(
+  mar = c(5, 5, 4, 2) + 0.1,  # Margins: bottom, left, top, right
+  cex.lab = 1.1,
+  cex.main = 1.2,
+  bty = "o"                   # Box around plotting region
+)
+
+plotDispEsts(
+  dds,
+  main = expression(bold("DESeq2 dispersion estimates")),
+  xlab = expression(bold("Mean of normalized counts")),
+  ylab = expression(bold("Dispersion"))
+)
+
+par(op)
+```
+
+**Figure 5. DESeq2 dispersion estimates as a function of mean normalized gene expression.** Dispersion plot produced by `plotDispEsts()`. The plot shows gene-wise dispersion estimates (black points) versus the mean of normalized counts (x-axis, log-scaled). The red line shows the fitted dispersion trend, and the blue line shows the final dispersion values used by DESeq2. The y-axis is showing dispersion (log-scaled).
+
+*Figure 5* shows a decrease in dispersion as mean expression increases. This is as expected as lower count genes typically have more variability. Hence, the plot supports a negative binomial model for differential expression.
+
+## 3. Differential gene expression analysis
+
+### 3.1 Model design
+
+Differential gene expression analysis was performed using the `DESeq()` function in the `DESeq2` R package which models the count data using a negative binomial distribution. Experimental design consisted of a single factor (`group`) which represented either activeTB or LTBI (where LTBI was used as the reference). This setup enabled comparisons to be made between activeTB and LTBI using log2 fold-change estimates.
+
+The pipeline used by `DESeq2` includes size factor estimates for normalization, estimates for dispersion, and gene-wise generalized linear models when fitting.
+
+### 3.2 Statistical testing
+
+`DESeq2` uses the Wald test for testing statistical significance. For each gene, the model tested if the expression between activeTB and LTBI patients were significantly different (p ≤ 0.05).
+
+For the correction of multiple hypothesis testing, adjusted p-values were computed using the Benjamini-Hochberg false discovery rate (FDR) method (built into `DESeq2`). There were genes with "NA" for their adjusted p-values, and they were excluded for any downstream analyses.
+
+Differential expression statistics are summarized in *Table 2*.
+
+```{r dge-results, message=FALSE, warning=FALSE}
+# Extract results for activeTB vs LTBI
+res <- results(dds, contrast = c("group", "activeTB", "LTBI"))
+
+# Remove genes with NA adjusted p-values (often independent filtering)
+res <- res[!is.na(res$padj), ]
+
+# Convert results to dataframe
+res_df <- as.data.frame(res)
+
+# Add gene column
+res_df$gene <- rownames(res_df)
+
+# Keep only the important columns
+table2 <- res_df[, c("gene", "log2FoldChange", "pvalue", "padj")]
+
+# Order by adjusted p-value
+table2 <- table2[order(table2$padj), ]
+
+# Add direction column
+table2$direction <- ifelse(table2$log2FoldChange > 0,
+                           "upregulated (activeTB)",
+                           "downregulated (activeTB)")
+
+# Show top 10 genes with lowest padj values
+head(table2, 10)
+```
+
+**Table 2. Differential gene expression analysis results.** The table shows the top 20 differentially expressed genes between active tuberculosis (activeTB) and latent tuberculosis infection (LTBI) ordered by adjusted p-value (Benjamini-Hochberg FDR).
+
+### 3.3 Thresholds
+
+For identifying biologically meaningful differential expression, the following thresholds were set: false discovery rate (FDR) \< 0.05 and absolute log2 fold-change \> 1.
+
+So, if a gene meets both criteria, they were considered to be significantly differentially expressed. Genes with a positive log2 fold-change value were up-regulated in activeTB and those with a negative log2 fold-change value were down-regulated in activeTB.
+
+```{r thresholds, message=FALSE, warning=FALSE}
+# Thresholds
+alpha <- 0.05 # FDR cutoff
+lfc_cutoff <- 1 # |log2FC| cutoff
+
+df <- as.data.frame(res)
+
+df$significance <- "Not Significant"
+df$significance[df$padj < alpha & df$log2FoldChange > lfc_cutoff] <- "Upregulated"
+df$significance[df$padj < alpha & df$log2FoldChange < -lfc_cutoff] <- "Downregulated"
+```
+
+### 3.4 Volcano plot
+
+For visualizing genes with significant differential expression between activeTB and LTBI samples, a volcano plot was used (*Figure 6*). The plot is very useful in identifying genes with strong differential expression between activeTB and LTBI, and more specifically, which genes specifically show increased expression in either activeTB or LTBI samples.
+
+```{r volcano-plot, message=FALSE, warning=FALSE}
+# Select top genes to label (by adjusted p-value)
+top <- df[order(df$padj), ][1:10, ]
+top$gene <- rownames(top)
+
+# Plot
+ggplot(df, aes(x = log2FoldChange, y = -log10(padj), color = significance)) +
+  geom_point(alpha = 0.75, size = 1.6) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", linewidth = 0.5) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", linewidth = 0.5) +
+  geom_text_repel(
+    data = top,
+    aes(label = gene),
+    size = 3,
+    max.overlaps = Inf,
+    box.padding = 0.4,
+    point.padding = 0.2,
+    min.segment.length = 0
+  ) +
+  scale_color_manual(values = c(
+    "Upregulated" = "red",
+    "Downregulated" = "blue",
+    "Not Significant" = "grey"
+  )) +
+  labs(
+    title = "Volcano plot showing differential expression (activeTB vs LTBI)",
+    x = expression(bold(log[2] * " fold-change")),
+    y = expression(bold(-log[10] * "(FDR-adjusted p-value)")),
+    color = "Significance"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    legend.title = element_text(face = "bold"),
+    legend.position = "right"
+  )
+```
+
+**Figure 6. Volcano plot of differential gene expression between activeTB and LTBI.** The points in the volcano plot represent unique genes plotted by log2 fold-change (activeTB vs. LTBI) (x-axis) and significance (-log10(adjusted p value)) (y-axis). Genes which meet thresholds (FDR \< 0.05 and \|log2FC\| \> 1) are coloured either red (up-regulation in activeTB samples), blue (down-regulation in activeTB samples), or grey (genes which are not significant). The dashed horizontal line shows the FDR significance threshold, and the dashed vertical line shows the fold-change cutoff. Labeled points are the top 10 most significant genes that are differentially expressed.
+
+### 3.5 Heatmap of top genes
+
+In order to visualize the global transcriptional differences between activeTB and LTBI samples, a heatmap was generated using the top 100 genes (ranked by adjusted p-value). Furthermore, to highlight relative expression patterns across samples, VST values were row-scaled (z-score).
+
+```{r heatmap, message=FALSE, warning=FALSE}
+# Getting normalized counts
+norm_counts <- counts(dds, normalized = TRUE)
+norm_counts <- as.matrix(norm_counts)
+
+# Use DESeq2 results
+res_to_rank <- res
+
+# Set data frame
+res_df <- as.data.frame(res_to_rank)
+
+# Get top 100 genes by lowest padj
+top100_genes <- rownames(res_df)[order(res_df$padj)][1:100]
+
+# subset normalized counts
+top_norm_counts <- norm_counts[top100_genes, , drop = FALSE]
+
+# VST
+vst_mat <- assay(vsd)
+top_vst <- vst_mat[top100_genes, , drop = FALSE]
+
+# Standardize each gene (row) to see relative expression across samples, not absolute counts
+top_vst_z <- t(scale(t(top_vst)))
+top_vst_z[is.na(top_vst_z)] <- 0
+
+# Heatmap annotations
+group_cols <- c("LTBI" = "#1f77b4", "activeTB" = "#d62728")
+
+ha <- HeatmapAnnotation(
+  Group = meta$group,
+  col = list(Group = group_cols),
+  annotation_name_side = "left"
+)
+
+# Draw the heatmap
+basic_heatmap <- Heatmap(
+  top_vst_z,
+  name = "Z-score",
+  top_annotation = ha,
+  show_row_names = FALSE, # Remove gene labels
+  show_column_names = FALSE,# Remove sample labels
+
+  # Clustering
+  cluster_columns = TRUE,
+  cluster_rows = TRUE,
+  
+  # Bolded title
+  column_title = "Heatmap of top 100 DE genes between activeTB and LTBI",
+  column_title_gp = gpar(fontface = "bold", fontsize = 12),
+
+  # Clean legend
+  heatmap_legend_param = list(
+    title_gp = gpar(fontface = "bold"),
+    labels_gp = gpar(fontsize = 9)
+  ),
+
+  border = TRUE
+)
+
+# Draw heatmap
+draw(basic_heatmap, heatmap_legend_side = "right", annotation_legend_side = "right")
+```
+
+**Figure 7. Heatmap of top 100 differentially expressed genes between activeTB and LTBI.** Heamtap showing variance-stabilized expression values (VST) for the top 100 genes (ordered with respect to adjusted p-value). The VST values were standardized by gene (row z-score) to emphasize expression differences across samples. Each column is a unique sample, and each row is a unique gene. Samples are labeled as either activeTB or LTBI in the "Group" row. Hierarchical clustering on both the x- and y-axis is enabled, revealing distinct transcriptional and similar differential expression patterns for the top 100 genes for both groups.
+
+*Figure 7* demonstrates that samples clearly cluster according to their group (LTBI or activeTB). This further suggests that LTBI and activeTB samples have different transcriptional profiles.
+
+## 4. Dataset interpretation and documentation
+
+[Why is the dataset of interest to you?]{.underline}
+
+From a young age I knew that the severity of tuberculosis (TB) for an individual lived on a spectrum. However, I have only now formally learned the main classifications of TB: active tuberculosis (ATB) and laent tuberculosis infection (LTBI) after exploring my dataset of interest.
+
+The dataset (GSE152218) compares Indian individuals with ATB and LTBI. This is of interest to me because in Pakistan, my home country, TB is extremely prevalent with the 5th highest rate in the world [@ullah2024]. I personally know many people, some friends and family, who have had to suffer with this horrible illness (both ATB and LTBI).
+
+This motivates me to have a better understanding of the disease to hopefully assist in the development of personalized treatments for ATB. For example, if I'm able to understand which genes are up-regulated in ATB vs LTBI, I may be able to suggest potential drug targets, or even identify biomarkers for treatment monitoring.
+
+[What are the control and test conditions of the dataset?]{.underline}
+
+The control conditions I am using in the dataset are LTBI patients. The test conditions I am using in the dataset are ATB patients.
+
+**This information comes from section *1.2 Dataset source and details*.**
+
+[How many samples are in each of the conditions of your dataset?]{.underline}
+
+There are 32 LTBI patients (control) and 16 ATB patients (test).
+
+[Were there expression values that were not unique for specific genes? How did you handle these?]{.underline}
+
+Yes. There were non-unique mappings when doing identifier mapping. There were 2 cases:
+
+1.  One Ensembl ID mapped to multiple HUGO symbols
+
+    This was not prevalent in my dataset, but the code handled it anyways by de-duplicating mapping after running `getBM()` for identifier mapping.
+
+2.  Multiple Ensembl IDs mapped to the same HUGO symbol
+
+    In order to ensure each row was a unique gene, I kept the first occurrence of the Ensembl ID and removed other duplicates. This prevented the same gene from being counted many times during differential expression analysis.
+
+Handling these 2 cases ensured that the final genes x samples count matrix contained unique genes.
+
+**This information comes from section *2.3 Data cleaning*.**
+
+[Were there expression values that could not be mapped to current HUGO symbols?]{.underline}
+
+Some Ensembl gene IDs did not map to HUGO symbols (likely due to poor annotations or updated loci). Instead of removing these rows, I kept them and used their Ensembl ID as the unique identifier. This was because if the un-annotated gene was potentially important (i.e., showed significant differential expression), it was not discarded.
+
+Therefore, all genes were preserved unless they were removed by low-count filtering.
+
+**This information comes from section *2.3 Data cleaning*.**
+
+[Were there any outliers in your dataset? How were they handled in the originating paper? How many outliers were removed?]{.underline}
+
+The MDS plot showed one sample that was far away from the main cluster, but I did not immediately classify this sample as an outlier.
+
+In order to evaluate the outlier I did the following steps [@filzmoser2008]:
+
+1.  Calculated its distance from the centroid in MDS space
+2.  Checked its library size and z-score
+3.  Observed that this sample's library size was within a normal range (z = 2.20 \< 3).
+
+In summary, since I did not detect any technical issue, I kept the sample. Variation was reported as true biological variation.
+
+**This information comes from section *2.4.3 Multidimensional scaling (MDS)*.**
+
+One of the originating papers (Malnutrition leads to increased inflammation and expression of tuberculosis risk signatures in recently exposed household contacts of pulmonary tuberculosis [@vanvalkenburg2022]) did detect an outlier LTBI sample in their principal component analysis (PCA) which was not able to be corrected for. There is a chance that this is the same sample as the LTBI sample I detected as being far from the main cluster in the MDS plot.
+
+[How did you handle replicates?]{.underline}
+
+The dataset contained human patient samples in which each sample was a unique individual. Therefore, there were no replicates in that sense.
+
+That being said, we had multiple biological replicates (so multiple independent individuals belonging to a particular condition, either activeTB or LTBI).
+
+The way I handled the biological replicate was by treating each patient as an independent sample within their respective group. `DESeq2` is specifically designed for this setup. The package will estimate dispersion using "within-group variability across biological replicates".
+
+This is the correct approach as any other method (e.g., averaging patients) would lead to the loss of true biological variability.
+
+[What is the final coverage of your dataset?]{.underline}
+
+The final dataset contained 29,078 genes across 48 samples after pre-processing and filtering. This is the transcriptional coverage used for analysis.
+
+I also computed the average library size, 26,836,006, across all 48 samples by running `mean(lib_df$library_size)`. `lib_df` was created in section *2.4.1 Library size distribution* when making the barplot showing library size per sample.
+
+## 5. Conclusion
+
+In this study, I successfully loaded and processed the GSE152218 RNA-seq dataset for differential gene expression analysis between ATB and LTBI samples. Ensembl gene IDs were translated to unique HUGO gene symbols, low-count genes were removed, and counts were normalized using `DESeq2`'s median-of-ratios method along with variance stabilizing transformation (VST). Exploratory analysis suggested that samples were able to be compared against each other. Finally, differential gene expression analysis suggested different transcriptional profiles between LTBI and ATB samples (as hypothesized).
+
+## 6. References
