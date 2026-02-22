@@ -12,7 +12,6 @@ This follows the following workflow: **choose a mart → choose a dataset → di
 library(biomaRt)
 ```
 
-
 ## 1. List marts
 
 ```{r}
@@ -74,8 +73,8 @@ searchAttributes(ensembl, "hgnc")
 
 Common attributes:
 
-- `ensembl_gene_id`
-- `hgnc_symbol`
+-   `ensembl_gene_id`
+-   `hgnc_symbol`
 
 ## 6. Strip version suffixes (if present)
 
@@ -125,5 +124,3 @@ df <- tibble(ensembl_gene_id = ids_clean, value = c(1, 2))
 df_annot <- left_join(df, map, by = "ensembl_gene_id")
 df_annot
 ```
-
-
