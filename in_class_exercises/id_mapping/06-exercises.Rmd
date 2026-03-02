@@ -2,24 +2,173 @@
 
 These are intended to be done **after** completing the worked examples.
 
-## Exercise 1 — https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE119732
+## Exercise 1 — <https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE119732>
 
 Using **GSE119732**, confirm whether the ID column contains Ensembl IDs with version suffixes.
 
-1. Extract the first 20 IDs.
-2. Count how many contain a `.`.
-3. Create a new column with versions stripped.
-4. Map the identifiers to HGNC symbols.
+1.  Extract the first 20 IDs.
+2.  Count how many contain a `.`.
+3.  Create a new column with versions stripped.
+4.  Map the identifiers to HGNC symbols.
 
-## Exercise 2 — https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE122380
+```{r}
+source("./fetch_geo_supp.R")
+library(dplyr)
+library(readr)
+library(biomaRt)
+
+gse <- "GSE119732"
+fetch_geo_supp(gse = gse)
+
+path  <- file.path("data", gse)
+files <- list.files(path, full.names = TRUE, recursive = TRUE)
+
+# pick the first table-like file (adjust pattern if needed)
+f <- files[grepl("\\.(tsv|txt|csv)(\\.gz)?$", files, ignore.case = TRUE)][1]
+x <- readr::read_tsv(f, show_col_types = FALSE)
+
+id_col <- names(x)[1]
+ids20  <- x[[id_col]] |> head(20) |> as.character()
+
+# 1) Extract first 20 IDs + 2) Count how many contain a "."
+n_with_dot <- sum(grepl("\\.", ids20))
+
+strip_ensembl_version <- function(x) {
+  sub("\\..*$", "", x)
+}
+
+ids_preview <- tibble(
+  raw_id    = ids20,
+  has_dot   = grepl("\\.", ids20),
+  stripped  = strip_ensembl_version(ids20)
+)
+
+ids_preview
+n_with_dot
+
+# 3) Create stripped column in the full table
+x2 <- x %>% mutate(ensembl_gene_id = strip_ensembl_version(.data[[id_col]]))
+
+# 4) Map to HGNC
+ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+map <- getBM(
+  attributes = c("ensembl_gene_id", "hgnc_symbol"),
+  filters    = "ensembl_gene_id",
+  values     = unique(x2$ensembl_gene_id),
+  mart       = ensembl
+)
+
+expr_mapped <- x2 %>% left_join(map, by = "ensembl_gene_id")
+expr_mapped %>% dplyr::select(ensembl_gene_id, hgnc_symbol, everything()) %>% head()
+```
+
+## Exercise 2 — <https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE122380>
 
 Using **GSE122380**, confirm whether the ID column contains Ensembl IDs with version suffixes.
 
-1. Extract the first 20 IDs.
-2. Create a new column with versions stripped.
-3. Map the identifiers to HGNC symbols.
-4. What is different about this file? 
+1.  Extract the first 20 IDs.
+2.  Create a new column with versions stripped.
+3.  Map the identifiers to HGNC symbols.
+4.  What is different about this file?
 
-## Exercise 3 - 
- 
-Can you use the worked example to process the above two GEO records?  How?
+```{r}
+source("./fetch_geo_supp.R")
+library(dplyr)
+library(readr)
+library(biomaRt)
+
+strip_ensembl_version <- function(x) sub("\\..*$", "", x)
+
+gse <- "GSE122380"
+fetch_geo_supp(gse = gse)
+
+path  <- file.path("data", gse)
+files <- list.files(path, full.names = TRUE, recursive = TRUE)
+
+f <- files[grepl("raw_counts|counts|\\.txt|\\.tsv|\\.csv", basename(files), ignore.case = TRUE)][1]
+x <- safe_read(f)
+
+id_col <- names(x)[1]
+ids20  <- head(as.character(x[[id_col]]), 20)
+
+# first 20 + stripped
+ids_preview <- tibble(
+  raw_id   = ids20,
+  has_dot  = grepl("\\.", ids20),
+  stripped = strip_ensembl_version(ids20)
+)
+ids_preview
+
+# full table with stripped IDs
+x2 <- x %>% mutate(ensembl_gene_id = strip_ensembl_version(.data[[id_col]]))
+
+# map Ensembl -> HGNC
+ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+map <- getBM(
+  attributes = c("ensembl_gene_id", "hgnc_symbol"),
+  filters    = "ensembl_gene_id",
+  values     = unique(x2$ensembl_gene_id),
+  mart       = ensembl
+)
+
+expr_mapped <- x2 %>% left_join(map, by = "ensembl_gene_id")
+expr_mapped %>% dplyr::select(ensembl_gene_id, hgnc_symbol, dplyr::everything()) %>% head()
+```
+
+On the GEO series page for GSE122380, the “processed data” includes two supplementary files: an Excel table and the raw counts matrix (`GSE122380_Supplementary_Data_Table_S1.xlsx` and `GSE122380_raw_counts.txt.gz`).
+
+## Exercise 3
+
+Can you use the worked example to process the above two GEO records? How?
+
+```{r}
+process_geo_counts <- function(gse) {
+  fetch_geo_supp(gse = gse)
+  path  <- file.path("data", gse)
+  files <- list.files(path, full.names = TRUE, recursive = TRUE)
+
+  f <- files[grepl("counts|raw|\\.txt|\\.tsv|\\.csv", basename(files), ignore.case = TRUE)][1]
+  x <- safe_read(f)
+
+  id_col <- names(x)[1]
+  ids20  <- head(as.character(x[[id_col]]), 20)
+
+  ids_preview <- tibble(
+    raw_id   = ids20,
+    has_dot  = grepl("\\.", ids20),
+    stripped = strip_ensembl_version(ids20)
+  )
+
+  x2 <- x %>% mutate(ensembl_gene_id = strip_ensembl_version(.data[[id_col]]))
+
+  ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+  map <- getBM(
+    attributes = c("ensembl_gene_id", "hgnc_symbol"),
+    filters    = "ensembl_gene_id",
+    values     = unique(x2$ensembl_gene_id),
+    mart       = ensembl
+  )
+
+  expr_mapped <- x2 %>% left_join(map, by = "ensembl_gene_id")
+  list(file = f, ids_preview = ids_preview, mapped_head = head(expr_mapped))
+}
+
+# run both exercises
+res_6_1 <- process_geo_counts("GSE119732")
+res_6_2 <- process_geo_counts("GSE122380")
+
+res_6_1$ids_preview
+res_6_2$ids_preview
+```
+
+Yes: same pipeline, just parameterize the GSE and let the code:
+
+-   fetch supp files
+
+-   read the counts table
+
+-   grab first 20 IDs + count dots
+
+-   strip versions
+
+-   map via biomaRt
