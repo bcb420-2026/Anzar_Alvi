@@ -53,11 +53,13 @@ bibliography: references.bib
 
 7.  Link to journal entry
 
-8.  References
+8.  Appendix 1 (A1)
+
+9.  References
 
 ## 1. Introduction
 
-This report (Assignment #2, A2) is an extension of Assignment #1, A1, (*Appendix 1*) which focused on data set selection, cleaning, and scoring. Here, we carried out both pathway- and network-level interpretation of the gene expression results from Assignment #1. As a quick recap from A1, the dataset analyzed (GEO accession GSE152218) was a human whole-blood bulk RNA-seq dataset which compared patients with active tuberculosis (ATB) and latent tuberculosis infection (LTBI).
+This report (Assignment #2, A2) is an extension of Assignment #1, A1, (section *8. Appendix 1 (A1)*) which focused on data set selection, cleaning, and scoring. Here, we carried out both pathway- and network-level interpretation of the gene expression results from Assignment #1. As a quick recap from A1, the dataset analyzed (GEO accession GSE152218) was a human whole-blood bulk RNA-seq dataset which compared patients with active tuberculosis (ATB) and latent tuberculosis infection (LTBI).
 
 In A1, we downloaded raw count data from GEO [@clough2023], mapped the Ensembl identifiers to to HUGO gene symbols (where possible), resolved duplicate mappings (either one Ensembl ID mapping to multiple HUGO symbols, or vice versa), and removed low-count genes (count \< 10). The final filtered dataset contained 29,078 genes across 48 samples (32 LTBI, control, and 16 ATB, test, patients). Counts were normalized using the built-in median-of-ratios method from the `DESeq` function in the `DESeq2` package [@DESeq2] and the variance stabilizing transformation (VST) was used for visualization/exploratory analysis.
 
@@ -508,4 +510,8 @@ In conclusion, the pathway and network analyses consistently showed an enrichmen
 
 The link to my journal entry is here: <https://github.com/bcb420-2026/Anzar_Alvi/wiki/A2>
 
-## 8. References
+## 8. Appendix 1 (A1)
+
+<https://bcb420-2026.github.io/Anzar_Alvi/A1_AnzarAlvi.html>
+
+## 9. References
