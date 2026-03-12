@@ -805,6 +805,6 @@ In this study, I successfully loaded and processed the GSE152218 RNA-seq dataset
 
 ## 6. Link to journal entry
 
-The link is here: https://github.com/bcb420-2026/Anzar_Alvi/wiki/A1
+The link is here: <https://github.com/bcb420-2026/Anzar_Alvi/wiki/A1>
 
 ## 7. References
